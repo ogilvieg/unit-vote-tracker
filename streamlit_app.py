@@ -58,7 +58,7 @@ gb = GridOptionsBuilder.from_dataframe(st.session_state.df)
 # Enable global column behaviors: filter, sort, resize
 gb.configure_default_column(filter=True, sortable=True, resizable=True)
 gb.configure_column("Vote", editable=True, cellEditor="agSelectCellEditor",
-                    cellEditorParams={"values": ["YES", "NO"]})
+                    cellEditorParams={"values": ["Click to Cast Your Vote", "YES", "NO"]})
 gb.configure_column("VoteBinary", hide=True)
 gb.configure_columns(["Unit Number", "Beneficial Interest", "VoteBinary"], editable=False)
 gb.configure_grid_options(singleClickEdit=True)
