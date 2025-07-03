@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from decimal import Decimal, ROUND_DOWN
+import io
+import os
 
 def truncate_pct(val):
     return Decimal(val * 100).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
@@ -34,15 +36,44 @@ def weighted_vote_percentages(df):
         "non_voters": non_voter_interest / total_interest
     }
 
+# Helper: valid 4-digit number?
+def is_valid_voter_id(voter_id):
+    return voter_id.isdigit() and len(voter_id) == 4
 #-------APP LOGIC------------
 
+st.markdown("""
+### 🗳️ Voting Instructions
+
+To begin or continue voting, you'll need to enter a **4-digit Voter ID**.
+
+- If this is your **first time**, simply choose any 4-digit number (e.g. `1234`) to **create your Voter ID**.
+- If you’ve already started voting before, enter the **same 4-digit Voter ID** to **load your previous progress**.
+- Your votes will be saved in a private file associated with your Voter ID so you can return and finish later.
+
+🔒 _Please remember your Voter ID — it’s the only way to access your saved progress._
+""")
+
 df = pd.read_csv('dataset/owners_vote.csv')  # your df_unique
-df['Vote'] = 'Click to Cast Your Vote'
-st.session_state.df = df
+df['Vote'] = 'Click to Vote'
+
+voter_id = st.text_input("Voter ID (4 digits) e.g. 2025", max_chars=4)
+start_fresh = False
+if st.button("🔄 Load My Previous Vote"):
+    if not is_valid_voter_id(voter_id):
+        st.error("Voter ID must be a 4-digit number.")
+    else:
+        file_path = f"votes_{voter_id}.csv"
+        if os.path.exists(file_path):
+            user_votes = pd.read_csv(file_path)
+            st.session_state.df = user_votes
+            st.success(f"✅ Loaded vote data for Voter ID {voter_id}.")
+        else:
+            st.warning("No existing vote found. You can start fresh.")
 
 
 # 1. Initialize
 if 'df' not in st.session_state:
+    # st.session_state.df = df
     st.session_state.df = df.copy()
 
 st.markdown("""
@@ -58,10 +89,12 @@ gb = GridOptionsBuilder.from_dataframe(st.session_state.df)
 # Enable global column behaviors: filter, sort, resize
 gb.configure_default_column(filter=True, sortable=True, resizable=True)
 gb.configure_column("Vote", editable=True, cellEditor="agSelectCellEditor",
-                    cellEditorParams={"values": ["Click to Cast Your Vote", "YES", "NO"]})
+                    cellEditorParams={"values": ["Click to Vote", "YES", "NO"]})
 gb.configure_column("VoteBinary", hide=True)
-gb.configure_columns(["Unit Number", "Beneficial Interest", "VoteBinary"], editable=False)
-gb.configure_grid_options(singleClickEdit=True)
+# gb.configure_column("Owner Type", hide=True)
+gb.configure_columns(["Unit Number", "Beneficial Interest", "VoteBinary", "Owner Type"], editable=False)
+gb.configure_grid_options(singleClickEdit=True,
+                          stopEditingWhenCellsLoseFocus=True)
 grid_options = gb.build()
 
 
@@ -117,3 +150,17 @@ col1.metric("YES | vote %", f"{yes_pct}%")
 col2.metric("NO | vote %", f"{no_pct}%")
 col3.metric("Non-voters | vote %", f"{non_pct}%")
 
+csv = st.session_state.df.to_csv(index=False).encode("utf-8")
+st.download_button("📥 Download Vote Results as CSV", csv, "vote_results.csv", "text/csv")
+
+if st.button("💾 Save My Vote"):
+    if not is_valid_voter_id(voter_id):
+        st.error("Please enter a valid 4-digit Voter ID before saving.")
+    else:
+        save_path = f"votes_{voter_id}.csv"
+        if os.path.exists(save_path):
+            st.warning(f"⚠️ This will overwrite an existing vote file: {save_path}")
+            st.session_state.df.to_csv(save_path, index=False)
+            st.success(f"✅ Vote saved to {save_path}")
+
+st.dataframe(st.session_state.df)
