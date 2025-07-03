@@ -2,6 +2,10 @@ import plotly.express as px
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from decimal import Decimal, ROUND_DOWN
+
+def truncate_pct(val):
+    return Decimal(val * 100).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
 def weighted_vote_percentages(df):
     df = df.copy()
@@ -104,8 +108,12 @@ with chart_col:
     fig.update_traces(textposition='inside', textinfo='percent+label')
     st.plotly_chart(fig, use_container_width=True)
 
+# column metrics
+yes_pct = truncate_pct(weighted["1"])
+no_pct = truncate_pct(weighted["0"])
+non_pct = truncate_pct(weighted["non_voters"])
 col1, col2, col3 = st.columns(3)
-col1.metric("YES | vote %", f"{weighted['1'] * 100:.1f}%")
-col2.metric("NO | vote %", f"{weighted['0'] * 100:.1f}%")
-col3.metric("Non-voters | vote %", f"{weighted['non_voters'] * 100:.1f}%")
+col1.metric("YES | vote %", f"{yes_pct}%")
+col2.metric("NO | vote %", f"{no_pct}%")
+col3.metric("Non-voters | vote %", f"{non_pct}%")
 
