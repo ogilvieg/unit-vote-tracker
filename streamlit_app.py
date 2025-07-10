@@ -36,13 +36,11 @@ def weighted_vote_percentages(df):
 
 #-------APP LOGIC------------
 
-df = pd.read_csv('dataset/owners_vote.csv')  # your df_unique
-df['Vote'] = 'Click to Cast Your Vote'
-st.session_state.df = df
-
 
 # 1. Initialize
 if 'df' not in st.session_state:
+    df = pd.read_csv('dataset/owners_vote.csv')  # your df_unique
+    df['Vote'] = 'Click to Cast Your Vote'
     st.session_state.df = df.copy()
 
 st.markdown("""
@@ -52,13 +50,35 @@ Use the dropdown in the **Vote** column to select `YES` or `NO`.
 Your voting power is weighted by your **Beneficial Interest** percentage.
 """)
 
+st.markdown("### 🔍 Search or Filter Units")
+search_term = st.text_input("Search Unit Number (optional)", "")
+
+# Optional: Upload vote progress
+uploaded_file = st.file_uploader("📤 Upload previous vote file (.csv)", type=["csv"])
+if uploaded_file:
+    uploaded_df = pd.read_csv(uploaded_file)
+    st.session_state.df = uploaded_df
+    st.success("✅ Previous vote data loaded.")
+
+# Reset Button
+if st.button("🗑️ Start Over"):
+    df = pd.read_csv('dataset/owners_vote.csv')
+    df['Vote'] = 'Click to Cast Your Vote'
+    st.session_state.df = df.copy()
+    st.success("Vote table has been reset.")
+
+
+# Optional: Filter by search term
+df_filtered = st.session_state.df.copy()
+if search_term:
+    df_filtered = df_filtered[df_filtered["Unit Number"].astype(str).str.contains(search_term, case=False)]
+
 
 # Configure AgGrid with dropdown for "Vote"
 gb = GridOptionsBuilder.from_dataframe(st.session_state.df)
-# Enable global column behaviors: filter, sort, resize
 gb.configure_default_column(filter=True, sortable=True, resizable=True)
 gb.configure_column("Vote", editable=True, cellEditor="agSelectCellEditor",
-                    cellEditorParams={"values": ["Click to Cast Your Vote", "YES", "NO"]})
+    cellEditorParams={"values": ["Click to Cast Your Vote", "YES", "NO"]})
 gb.configure_column("VoteBinary", hide=True)
 gb.configure_columns(["Unit Number", "Beneficial Interest", "VoteBinary"], editable=False)
 gb.configure_grid_options(singleClickEdit=True)
@@ -75,7 +95,7 @@ with table_col:
     # Re-render voting table here
     # Show interactive table
     grid_response = AgGrid(
-        st.session_state.df,
+        df_filtered,
         gridOptions=grid_options,
         update_mode=GridUpdateMode.VALUE_CHANGED,
         fit_columns_on_grid_load=True,
@@ -117,3 +137,26 @@ col1.metric("YES | vote %", f"{yes_pct}%")
 col2.metric("NO | vote %", f"{no_pct}%")
 col3.metric("Non-voters | vote %", f"{non_pct}%")
 
+# --- Download Current Vote File ---
+csv_data = st.session_state.df.to_csv(index=False).encode("utf-8")
+st.download_button(
+    label="📥 Download Your Vote File",
+    data=csv_data,
+    file_name="my_vote_data.csv",
+    mime="text/csv"
+)
+
+non_voters_df = st.session_state.df[
+    ~st.session_state.df["Vote"].isin(["YES", "NO"])
+].copy()
+
+if not non_voters_df.empty:
+    csv_data = non_voters_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📤 Download List of Non-Voters",
+        data=csv_data,
+        file_name="non_voters.csv",
+        mime="text/csv"
+    )
+else:
+    st.info("🎉 All units have voted — no non-voters to download.")
