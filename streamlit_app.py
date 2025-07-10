@@ -50,9 +50,6 @@ Use the dropdown in the **Vote** column to select `YES` or `NO`.
 Your voting power is weighted by your **Beneficial Interest** percentage.
 """)
 
-st.markdown("### 🔍 Search or Filter Units")
-search_term = st.text_input("Search Unit Number (optional)", "")
-
 # Optional: Upload vote progress
 uploaded_file = st.file_uploader("📤 Upload previous vote file (.csv)", type=["csv"])
 if uploaded_file:
@@ -66,12 +63,6 @@ if st.button("🗑️ Start Over"):
     df['Vote'] = 'Click to Cast Your Vote'
     st.session_state.df = df.copy()
     st.success("Vote table has been reset.")
-
-
-# Optional: Filter by search term
-df_filtered = st.session_state.df.copy()
-if search_term:
-    df_filtered = df_filtered[df_filtered["Unit Number"].astype(str).str.contains(search_term, case=False)]
 
 
 # Configure AgGrid with dropdown for "Vote"
@@ -95,7 +86,7 @@ with table_col:
     # Re-render voting table here
     # Show interactive table
     grid_response = AgGrid(
-        df_filtered,
+        st.session_state.df,
         gridOptions=grid_options,
         update_mode=GridUpdateMode.VALUE_CHANGED,
         fit_columns_on_grid_load=True,
