@@ -2,10 +2,10 @@ import plotly.express as px
 import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_UP, Decimal, ROUND_DOWN
 
 def truncate_pct(val):
-    return Decimal(val * 100).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    return Decimal(val * 100).quantize(Decimal("0.00"), rounding=ROUND_UP)
 
 def weighted_vote_percentages(df):
     df = df.copy()
